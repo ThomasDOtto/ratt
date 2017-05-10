@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 refembl=$1
 query=$2
 result=$3
@@ -11,10 +10,14 @@ if [ -z "$RATT_HOME" ]; then
  echo "Please set the RATT_HOME variable."
  echo "At Sanger for bash it is RATT_HOME=/nfs/users/nfs_t/tdo/Bin/ratt; export RATT_HOME"
  echo "At Sanger for tcsh setenv RATT_HOME /nfs/users/nfs_t/tdo/Bin/"
-exit;
+
+ echo "I will use the sanger default!"
+RATT_HOME=/nfs/users/nfs_t/tdo/Bin/ratt; export RATT_HOME
 fi;
 
-
+### parameter of nucmer
+D=5
+NUCMER_PATH=$PAGIT_HOME/bin/;
 ## check the entrance
 if [ -z "$parameterSet" ]; then 
 	echo "Please use RATT with the following options:
@@ -60,8 +63,6 @@ embl-annotation files     - This directory contains all the embl files that shou
 if [ ! -z "$RATT_VERBOSE" ]
 	then
 	verbose=1;
-else
-	verbose=0;
 fi
 
 if [ -z "$RATT_DOTRANSLATION" ] ;
@@ -71,12 +72,14 @@ fi
 
 ### nucmer call as function
 function doNucmer {
-#	if [ "$verbose" == 1 ] 
-#		then 
-#		echo "nucmer  $other_nucmer -g $g -p $name -c $c -l $l $ref $query"
-#		echo "delta-filter $rearrange -i $minInd $name.delta > $name.filter.delta"
-#	fi
-	nucmer $other_nucmer -g $g -p $name -c $c -l $l $ref $query &> /dev/null
+sleep 10
+	if [ ! -z "$verbose" ] 
+		then 
+		echo "nucmer  $other_nucmer  -g $g -p $name -c $c -l $l $ref $query"
+		echo "delta-filter $rearrange -i $minInd $name.delta > $name.filter.delta"
+	fi
+	echo  nucmer $other_nucmer -D $D -g $g -p $name -c $c -l $l $ref $query
+	nucmer $other_nucmer -g $g -p $name -c $c -l $l $ref $query  # &> /dev/null
 	delta-filter $rearrange -i $minInd $name.delta > $name.filter.delta
 	show-snps -HTr $name.filter.delta > $name.snp
 	show-coords -clHT $name.delta > $name.coords
@@ -210,7 +213,7 @@ if [ "$parameterSet" == "Assembly" ] || [ "$parameterSet" == "Assembly.Repetitiv
 	then 
 	c=400;
 	l=30;
-	g=500;
+	g=1000;
 	
 	if [ "$parameterSet" == "Assembly.Repetitive" ] ;
 		then
@@ -218,11 +221,12 @@ if [ "$parameterSet" == "Assembly" ] || [ "$parameterSet" == "Assembly.Repetitiv
 	else
 		other_nucmer="  "
 	fi
-	rearrange=" -g -o 1 ";
-	minInd=98;
+#       rearrange=" -g -o 0 ";
+	rearrange=" -r -o 5 ";
+	minInd=99;
 	
 	### get real SNP before mutate
-	doNucmer
+	doNucmer 
 
 	perl $RATT_HOME/main.ratt.pl Difference  $name.snp $name.filter.coords $result
 	doneDifference=1;
@@ -237,14 +241,76 @@ if [ "$parameterSet" == "Assembly" ] || [ "$parameterSet" == "Assembly.Repetitiv
 	fi;
 	### update name of query
 	query=$query."mutated"
+elif [ "$parameterSet" == "Pacbio" ] ;
+       then
+        c=800;
+        l=30;
+        g=2000;
 
-elif [ "$parameterSet" == "Strain" ] ||  [ "$parameterSet" == "Strain.Repetitive" ] ;
+        if [ "$parameterSet" == "Pacbio.Repetitive" ] ;
+                then
+                other_nucmer=" --maxmatch "
+        else
+                other_nucmer="  "
+        fi
+        rearrange=" -1 -o 20 -l 2000 ";
+        minInd=98;
+	other_nucmer="  -diagdiff 10 "
+        ### get real SNP before mutate
+        doNucmer
+
+        perl $RATT_HOME/main.ratt.pl Difference  $name.snp $name.filter.coords $result
+        doneDifference=1;
+
+        ### insert of mutation to have better anchors
+        perl $RATT_HOME/main.ratt.pl Mutate $query
+        return=$?
+        if [ "$return" != "0" ] ;
+                then
+                echo "See Error in BBA.main script, to mutate the query for Assembly to Assembly annotation transfer."
+                exit 1;
+        fi;
+        ### update name of query
+        query=$query."mutated"
+elif [ "$parameterSet" == "PacbioG" ] ;
+       then
+        c=800;
+        l=30;
+        g=2000;
+
+        if [ "$parameterSet" == "Pacbio.Repetitive" ] ;
+                then
+                other_nucmer=" --maxmatch "
+        else
+                other_nucmer="  "
+        fi
+        rearrange=" -g -o 20 -l 5000 ";
+        minInd=98;
+        other_nucmer="  -diagdiff 10 "
+
+        ### get real SNP before mutate
+        doNucmer
+
+        perl $RATT_HOME/main.ratt.pl Difference  $name.snp $name.filter.coords $result
+        doneDifference=1;
+
+        ### insert of mutation to have better anchors
+        perl $RATT_HOME/main.ratt.pl Mutate $query
+        return=$?
+        if [ "$return" != "0" ] ;
+                then
+                echo "See Error in BBA.main script, to mutate the query for Assembly to Assembly annotation transfer."
+                exit 1;
+        fi;
+        ### update name of query
+        query=$query."mutated"
+elif [ "$parameterSet" == "Falciparum" ] ||  [ "$parameterSet" == "Falciparum.Repetitive" ] ;
 	then 
 	c=400;
-	l=20;
-	g=500;
+	l=150;
+	g=2000;
 
-	if [ "$parameterSet" == "Strain.Repetitive" ] ;
+	if [ "$parameterSet" == "Falciparum.Repetitive" ] ;
 		then
 		other_nucmer=" --maxmatch "
 	else
@@ -271,21 +337,28 @@ elif [ "$parameterSet" == "Strain" ] ||  [ "$parameterSet" == "Strain.Repetitive
 	### update name of query
 #	query=$query."mutated"
 
-elif [ "$parameterSet" == "Strain.global" ] ||  [ "$parameterSet" == "Strain.global.Repetitive" ] ;
+elif [ "$parameterSet" == "Strain" ] ||  [ "$parameterSet" == "Strain.Repetitive" ] || [ "$parameterSet" == "Strain.global" ] ||  [ "$parameterSet" == "Strain.global.Repetitive" ];
 	then 
 	c=400;
 	l=20;
 	g=500;
 
-	if [ "$parameterSet" == "Strain.Repetitive" ] ;
+	if [ "$parameterSet" == "Strain.Repetitive" ] || [ "$parameterSet" == "Strain.global.Repetitive" ] ;
 		then
 		other_nucmer=" --maxmatch "
 	else
 		other_nucmer="  "
 	fi
-	
-	rearrange=" -g -o 1 ";
-	minInd=95;
+minInd=90;	
+	rearrange=" -r -o 1 ";
+	if  [ "$parameterSet" == "Strain.global" ] ||  [ "$parameterSet" == "Strain.global.Repetitive" ] ;
+		then
+		rearrange=" -g -o 15 ";
+                minInd=95;
+		D=10	
+fi
+
+
 	
 	### get real SNP before mutate
 	doNucmer
@@ -303,69 +376,27 @@ elif [ "$parameterSet" == "Strain.global" ] ||  [ "$parameterSet" == "Strain.glo
 	fi;
 	### update name of query
 	query=$query."mutated"
-elif [ "$parameterSet" == "Strain.reference" ] ||  [ "$parameterSet" == "Strain.reference.Repetitive" ] ;
-	then 
-	c=400;
-	l=20;
-	g=500;
 
-	if [ "$parameterSet" == "Strain.Repetitive" ] ;
-		then
-		other_nucmer=" --maxmatch "
-	else
-		other_nucmer="  "
-	fi
-	
-	rearrange=" -r -o 1 ";
-	minInd=95;
-	
-	### get real SNP before mutate
-#	doNucmer
-
-#	perl $RATT_HOME/main.ratt.pl Difference  $name.snp $name.filter.coords $result
-	doneDifference=0;
-
-	### insert of mutation to have better anchors
-#	perl $RATT_HOME/main.ratt.pl Mutate $query
-#	return=0#$?
-#	if [ "$return" != "0" ] ;
-#		then 
-#		echo "See Error in BBA.main script, to mutate the query for Assembly to Assembly annotation transfer."
-#		exit 1;
-#	fi;
-	### update name of query
-#	query=$query."mutated"
-
-elif [ "$parameterSet" == "Species" ]  || [ "$parameterSet" == "Species.Repetitive" ] ;
+elif [ "$parameterSet" == "Species" ]  || [ "$parameterSet" == "Species.Repetitive" ] || [ "$parameterSet" == "Species.global" ]  || [ "$parameterSet" == "Species.global.Repetitive" ] ;
 	then 
 	if [ "$parameterSet" == "Species.Repetitive" ] ;
 		then
 		other_nucmer=" --maxmatch "
 	else
-		other_nucmer="  "
+	other_nucmer="  -diagdiff 10 "		
+#other_nucmer="  "
 	fi
 
 	c=400;
 	l=10;
-	g=500;
- 
-	rearrange=" -r  -o 1";
+	g=1000;
 	minInd=40;
-elif [ "$parameterSet" == "Species.global" ]  || [ "$parameterSet" == "Species.global.Repetitive" ] ;
-	then 
-	if [ "$parameterSet" == "Species.global.Repetitive" ] ;
+ 
+	rearrange=" -r -o 5 ";
+	if  [ "$parameterSet" == "Species.global" ]  || [ "$parameterSet" == "Species.global.Repetitive" ] ;
 		then
-		other_nucmer=" --maxmatch "
-	else
-		other_nucmer="  "
+		rearrange=" -g -o 5 ";
 	fi
-
-	c=400;
-	l=10;
-	g=500;
- 
-	rearrange=" -g -o 1 ";
-	minInd=40;
 elif [ "$parameterSet" == "Multiple" ] ;
 	then 
 	c=400;
@@ -384,9 +415,10 @@ elif [ "$parameterSet" == "Free" ] ;
 	minInd=$RATT_minInd;
 	other_nucmer=$RATT_anchor;
 else
-	echo "Plese set: Transfer type: Assembly / Strain / Free "
+	echo "Plese set: Transfer type: Assembly / Strain / Species / Strain.Repetitive / Strain.global / Species.Repetitive / Species.global / Free "
 	exit
 fi
+
 
 ### do the comparison using nucmer
 doNucmer
@@ -405,7 +437,14 @@ if [ ! -z "$verbose" ]
 fi
 
 perl $RATT_HOME/main.ratt.pl Transfer $refembl $name.snp $name.filter.coords $result
-
+return=$?
+if [ "$return" != "0" ] ;
+	then 
+	echo "Sorry, the RATT transfer step did fail.\n"
+	echo "Debug information: perl $RATT_HOME/main.ratt.pl Transfer $refembl $name.snp $name.filter.coords $result";
+	pwd
+	exit 1;
+fi;
 
 ### do ther correction
 # first the fasta

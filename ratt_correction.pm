@@ -1297,7 +1297,9 @@ sub getID {
 
     my $notFound = 1;
     my $id;
+	my $id2;
 
+	### tdo 12/01/2015. We prefere the locus tag... other secound coise
     my $product = 'Not Set';
     $pos++;
 
@@ -1313,13 +1315,17 @@ sub getID {
             $id = $1;
         }
         if ( $$ref_ar[$pos] =~ /FT\s+.*c_id=\"(\S+)\"/ ) {
-            $id = $1;
+            $id2 = $1;
         }
         elsif ( $$ref_ar[$pos] =~ /FT\s{4,}\/product=\"(.*\S+)\"{0,1}$/ ) {
             $product = $1;
         }
         $pos++;
     }
+	if (!defined($id)) {
+	  $id=$id2;
+	  
+	}
     return ( $id, $product );
 
 }
@@ -1931,6 +1937,7 @@ sub reverseCDS {
     $line =~ s/>//g;
     $line =~ s/<//g;
 
+	
     my $wasComplement = 0;
     if ( $line =~ /complement/ ) {
         $wasComplement = 1;
@@ -1964,7 +1971,8 @@ sub reverseCDS {
     if ( !$wasComplement ) {
         $res = "complement($res)";
     }
-    return $res;
+	
+	return $res;
 }
 
 sub reverseGFF {
@@ -1993,58 +2001,62 @@ sub correctEMBL {
     my $postfix = shift;
 	my $fastaFile = shift;	
 
-#	my $ref_SeqLength=getFastaLength($fastaFile);
+	#	my $ref_SeqLength=getFastaLength($fastaFile);
 	my $seqLength=getFastaLengthOneSeq($fastaFile);
-
+	
 	if ($seqLength <1) {
 	  die "Problems with fasta sequence...\nProbably empty...\n";
 	}
 	
     my $res;
     open( F, $embl ) or die "Couldn't open EMBL file $embl.\n";
-
+	
     #  my @F=<F>;
-
+	
     my $getNext = 0;
-
+	
 	my $restmp;
-
-#	print "Max length is $seqLength\n";
-
+	
+	#	print "Max length is $seqLength\n";
+	
     while (<F>) {
-        chomp;
-        if (/^FT   \S+\s+(\S+,)$/) {
-            $getNext = 1;
-#            $res .= $_;
-			$restmp=$_;
-			
-			
-        }
-        elsif ($getNext) {
-            if (/^FT\s+(.*,)$/) {
-                $getNext = 1;
-                $restmp .= $1;
-				
-            }
-            else {
-                /^FT\s+(.*)$/;
-                $getNext = 0;
-                $restmp .= $1 . "\n";
-				$res.=checkFeaturePos($restmp,$seqLength);
-			  }
-        }
-		elsif (/^FT   \S+\s+(\S+)/) {
-		  $res.=checkFeaturePos($_,$seqLength);
+	  chomp;
+	 
+	  if (/^FT   \S+\s+(\S+,)$/) {
+		$getNext = 1;
+		#            $res .= $_;
+		$restmp=$_;
+		
+	  }
+	  elsif ($getNext) {
+		if (/^FT\s+(.*,)$/) {
+		  $getNext = 1;
+		  $restmp .= $1;
+		  
 		}
-        else {
-            $res .= $_ . "\n";
-		  }
+		else {
+		  /^FT\s+(.*)$/;
+		  $getNext = 0;
+		  $restmp .= $1 . "\n";
+		  
+		  $res.=checkFeaturePos($restmp,$seqLength);
+		}
+	  }
+	  elsif (/^FT   \S+\s+(\S+)/) {
+
+		
+		$res.=checkFeaturePos($_,$seqLength);
+	  }
+	  else {
+		$res .= $_ . "\n";
+	  }
     }
+#	print $res."\n";
     open( F, "> $embl.$postfix" )
       or die "Couldn't write EMBL file $embl.$postfix\n";
     print F $res;
     close(F);
-}
+  }
 
 sub checkFeaturePos{
   my $str = shift;
@@ -2068,14 +2080,14 @@ sub checkFeaturePos{
   my @sorted = sort { $a =~ /^(\d+)\./ <=> $b =~ /^(\d+)\./} @coor;
 
 #  print Dumper @sorted;
-  
+
+#  print $seqLength."\n";
   
   foreach (@coor) {
 	
 	if (/^(-*\d+)\.\.(-*\d+)$/) {
 	  $a1=$1;
 	  $b1=$2;
-#	  print ("$a1  $b1\n");
 	  
 	  if ($a1<1) {
 		if ($b1<10) {
@@ -2086,13 +2098,16 @@ sub checkFeaturePos{
 		}
 		$newPos+=$newPos
 	  }
+	  if ($b1>$seqLength) {
+		
+		$b1=$seqLength;
+		  
+	  }
 	  if ($a1>$seqLength) {
 		
-		$a1=($seqLength-3)
+		$a1=($b1-3)
 	  }
-	  if ($b1>$seqLength) {
-		$b1=$seqLength
-	  }
+	  
 	  if ($b1<1) {
 		$b1=($a1+9);
 		$newPos+=$newPos

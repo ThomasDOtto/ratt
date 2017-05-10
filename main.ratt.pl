@@ -1,7 +1,7 @@
 #! /usr/bin/perl -w
 #
 # File: annotation.correctString.pl
-# Time-stamp: <08-Oct-2010 14:39:38 tdo>
+# Time-stamp: <14-Dec-2011 15:11:58 tdo>
 # $Id: $
 #
 # Copyright (C) 2010 by Pathogene Group, Sanger Center
@@ -52,6 +52,18 @@ elsif ($ARGV[0] eq "Mutate") {
 	
   }
   putMutation($ARGV[1]);
+  
+  exit;
+}
+elsif ($ARGV[0] eq "MutateEMBL") {
+  if (! defined($ARGV[1])) {
+	print "\n\nusage: \$RATT_HOME/main.ratt.pl Mutate <embl dir> <Result Name>\n\n".
+	  "Each feature will be muated 5 bases into it, from both sites. This is necessary to recalibrate RATT for similar genomes. We hope that it goes better results than normal mutate.\n\n";
+	
+	exit;
+	
+  }
+  putMutationEmbl($ARGV[1],$ARGV[2]);
   
   exit;
 }
@@ -122,6 +134,9 @@ elsif ($ARGV[0] eq "Correct") {
   correctEMBL($embl,"tmp.BBA.embl",$fasta);
   
   startAnnotationCorrection( "$embl.tmp.BBA.embl",$fasta,$resultName);
+  print $resultName."\n";
+  
+  correctEMBL("$resultName.tmp2.embl","$resultName.tmp3.embl",$fasta);
   
   exit;
 }
@@ -298,9 +313,18 @@ sub doEMBL{
   if (-f $emblPart) {
 	### if a file has no embl
 	open F, $emblPart or die "Couldn't open embl file ($emblPart) in doEMBL: $!\n";
-	my @ar=<F>;
+	
+	#my @ar=<F>;
+	my @ar;my $ok=1;
+	while(<F>){
+	  if (/^SQ/){
+		$ok=0
+	  } elsif ($ok) {
+	    $res.=$_
+	  }
+	}
 	close(F);
-	$res.=join ('',@ar);
+#	$res.=join ('',@ar);
   }
 
   
@@ -598,9 +622,11 @@ sub adaptAnnotationEMBL{
 		  
 		  if ($count>1) {
 			if (/\/locus_tag/ || /_id=\"/) {
-			  s/\"$/.$count\"/g;
+			  #s/\"$/.$count\"/g;
+			  my @sp=split(/\"/);
+			  my $line=$sp[0]."\"DUP-$count".$sp[1]."\"\n";
 			}
-			$$ref_results[0]{$queryTarget} .= $_;
+			$$ref_results[0]{$queryTarget} .= $line;
 		  }
 		  else {
 			$$ref_results[0]{$queryTarget} .= $_;
@@ -616,13 +642,18 @@ sub adaptAnnotationEMBL{
 	elsif ($transfer==3){
 	  $$ref_results[1]{$chr} .= $_;
 	  my $count=0;
+
+	  ### April 2011
 	  foreach my $queryTarget (keys %$ref_queryTarget) {
 		$count++;
-		  if ($count>1) {
+		if ($count>1) {
 		  if (/\/locus_tag/ || /_id=\"/) {
-			s/\"$/.$count\"/g;
+			#s/\"$/.$count\"/g;
+			my @sp=split(/\"/);
+			my $line=$sp[0]."\"DUP-$count".$sp[1]."\"\n";
+			
 		  }
-		  $$ref_results[0]{$queryTarget} .= $_;
+		  $$ref_results[0]{$queryTarget} .= $line;
 		}
 		else {
 		  $$ref_results[0]{$queryTarget} .= $_;
@@ -655,6 +686,7 @@ sub doTransfer{
 	# the zero will hold the no puttable
 	my %ResultLine;
 
+	
 	### put complement to it, or get rid of it,
 	### also will need to reorder the numbers
 	my $wasComplement=0;
@@ -888,7 +920,7 @@ sub doTransfer{
 	  
 	  
 	}
-#	print Dumper @ar;
+
 	## default do not transfer
 	my $transfer=0;
 	#### check the amount
@@ -1260,13 +1292,13 @@ sub putMutation{
 	  }
 	}
 	### mutate the second and the seconlast
-	if ($seq[1] ne 'G') {
-	  $seq[1]='G'
+	if ($seq[40] ne 'G') {
+	  $seq[40]='G'
 	}
 	else {
-	  $seq[1]='C';
+	  $seq[40]='C';
 	}
-	$length--;
+	$length-=39;
 	$length--;
 	
 	if ($seq[$length] ne 'G') {
@@ -1288,6 +1320,85 @@ sub putMutation{
    }
   close(F)
 }
+
+############################################
+### putMutation
+############################################
+## Will mutate 5 bases into each feature
+sub putMutationEmbl{
+  my $emblDir = shift;
+  my $fastaResult = shift;
+
+  
+  opendir (DIR, $emblDir) or die "Problem to open opendir $emblDir: $!\n";
+  
+  ### will hold the new annotation: $h{queryname}.=annotation as embl
+
+  my %h;
+  
+  map {
+	if (/embl$/){
+	  my $n=$_;
+	  
+	  open F, "$emblDir/$_ " or die "Problem open $emblDir/$_ in putMutationEmbl:$! \n";
+	  my ($name)=$_ =~ /^(\S+)\.embl/;
+	  
+	  while (<F>) {
+		if (/^SQ/) {
+		  while (<F>) {
+			if (/\/\//) {
+			  
+			  last;
+			}
+			## get away space and number of seq
+			s/\d+//g;
+			s/\s+//g;
+			$h{$name}.=$_;
+						
+		  }
+		}
+	  }
+	 close (F);
+	  
+	  my @seq=split(//,$h{$name});
+	  ### now include the 
+	  open F, "$emblDir/$n " or die "Problem open $emblDir/$n in putMutationEmbl:$! \n";
+	  while (<F>) {
+	  	chomp;
+	   	if (/^FT   \S+ (.*)$/){
+	   		my @a=split(/,/);
+	   		foreach my $l (@a){
+	   			my ($s,$e) = /(\d+)\.\.(\d+)/;
+	   			if ($seq[($s+5)] ne 'G') {
+	        		$seq[($s+5)]="G\n"
+	  			}
+	  			else {
+					$seq[($s+5)]="C\n";
+	  			}
+				if ($seq[($e-5)] ne 'G') {
+	        		$seq[($e-5)]="G\n"
+	  			}
+	  			else {
+					$seq[($e-5)]="C\n";
+	  			}
+	   		}	
+	   	}
+	   }
+	   close(F);
+	   $h{$name}= join("",@seq)
+	   
+	}
+  } readdir(DIR);
+  
+ 
+  ### write the result
+  open (F, ">$fastaResult") or die "Problems to write the file $fastaResult\n";
+   for my $chr (keys %h) {
+	 print F ">$chr\n$h{$chr}\n";
+   }
+  close(F)
+}
+
 
 ###########################################
 ### Functions for gff files
