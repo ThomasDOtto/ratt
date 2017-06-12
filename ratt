@@ -1,10 +1,46 @@
 #!/bin/bash
 
+ARGUMENTS=$(getopt \
+               --options t:p:r: \
+               --longoptions type:,prefix:,refseq: \
+               --name 'ratt' -- "$@"
+        )
+
+if [ $? != 0 ]
+then
+    echo "See ratt(1) for usage information."
+    exit 1
+fi
+
+eval set -- "$ARGUMENTS"
+
+while true
+do
+    case "$1" in
+       -t|--type)
+           parameterSet="$2"
+           shift 2
+           ;;
+       -p|--prefix)
+           result="$2"
+           shift 2
+           ;;
+       -r|--refseq)
+           ref="$2"
+           shift 2
+           ;;
+       --)
+           shift
+           break
+           ;;
+       *)
+           echo "Support for option $1 is not implemented. Ignoring..."
+           ;;
+    esac
+done
+
 refembl=$1
 query=$2
-result=$3
-parameterSet=$4
-ref=$5
 
 if [ -z "$RATT_HOME" ]; then
  echo "Please set the RATT_HOME variable."
@@ -18,47 +54,16 @@ fi;
 ### parameter of nucmer
 D=5
 NUCMER_PATH=$PAGIT_HOME/bin/;
-## check the entrance
-if [ -z "$parameterSet" ]; then 
-	echo "Please use RATT with the following options:
-  $RATT_HOME/start.ratt.sh <Directory with embl-files> <Query-fasta sequence> <Resultname> <Transfer type> <optional: reference (multi) Fasta>
 
-  
-  Directory name with 
-  embl-annotation files  - This directory contains all the embl files that should be transfered to the query.
-  Query.fasta            - A multifasta file to, which the annotation will be mapped.
-  ResultName             - The prefix you wish to give to each result file.
-  Transfer type          - Following parameters can be used (see below for the different used sets)
-       (i)   Assembly:             Transfer between different assemblies. 
-       (ii)  Assembly.Repetitive:  As before, but the genome is extremely repetitive. 
-                   This should be run, only if the parameter Assembly doesn't return good results (misses too many annotation tags).  
-       (iii) Strain:              Transfer between strains. Similarity is between 95-99%.
-       (iv)  Strain.Repetitive:   As before, but the genome is extremely repetitive. 
-                   This should be run, only if the parameter Strain doesn't return good results (misses too many annotation tags).
-       (v)   Species:              Transfer between species. Similarity is between 50-94%.
-       (vi)  Species.Repetitive:   As before, but the genome is extremely repetitive. 
-                   This should be run, only if the parameter Species doesn't return good results (misses too many annotation tags).
-       (vii) Multiple:             When many annotated strains are used as a reference, and you assume the newly sequenced genome has many insertions
-                   compared to the strains in the query (reference?). This parameter will use the best regions of each reference strain to transfer tags.    
-       (viii)Free:                 The user sets all parameter individually.
-
-  reference fasta        - Name of multi-fasta. VERY I M P O R T A N T The name of each sequence in the fasta description, 
-                   MUST be the same name as its corresponding embl file. So if your embl file is call Tuberculosis.embl, in your reference.fasta file, 
-                   the description has to be 
-                           >Tuberculsosis
-                           ATTGCGTACG
-                           ..."
-
-	echo " or, for runs after iCORN:
-$RATT_HOME/start.ratt.sh ICORN <Directory with embl-files> <Last output of iCORN> <ResultName >
-
-embl-annotation files     - This directory contains all the embl files that should be transfered to the query.
-  Last output of iCORN    - The name of the reference.x - were x is the last iteration.
-  ResultName              - The prefix you wish to give to each result file.
-
-" 
-   exit
- fi
+## check that required arguments are passed
+if [ -z "$refembl" ] \
+       || [ -z "$query" ] \
+       || [ -z "$parameterSet" ] \
+       || [ -z "$result" ]
+then
+       echo "A required option was not passed. See ratt(1) for usage information"
+       exit 1
+fi
 
 if [ ! -z "$RATT_VERBOSE" ]
 	then
