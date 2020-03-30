@@ -229,7 +229,7 @@ elsif ($ARGV[0] eq "Transfer") {
   map {
 	if (/(\S+)\.embl$/){
 	  my $refName=$1;
-	  my $ref_shift;
+	  my $ref_shift = {};
 	  print "working on $refName\n";
 	  
 	  # fill the shift hash with the coords 
@@ -1712,8 +1712,8 @@ sub addTranslation
 	  $inCDS=0
 	}
 	
-	if (/FT\s+\/gene=\"(\S+)\"/ ||
-		/FT\s+\/systematic_id=\"(\S+)\"/ ||
+	if (/FT\s+\/gene=\"([^"]+)\"/ ||            # allowing gene names and
+		/FT\s+\/systematic_id=\"([^"]+)\"/ ||   # systematic IDs to contain spaces
 		/FT\s+\/locus_tag=\"(\S+)\"/   ) {
 	  $current_id=$1;
 	  $res.=$_;
