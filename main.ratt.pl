@@ -229,7 +229,7 @@ elsif ($ARGV[0] eq "Transfer") {
   map {
 	if (/(\S+)\.embl$/){
 	  my $refName=$1;
-	  my $ref_shift;
+	  my $ref_shift = {};
 	  print "working on $refName\n";
 
 	  # fill the shift hash with the coords
