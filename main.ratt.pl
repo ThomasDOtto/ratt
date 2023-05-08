@@ -1711,7 +1711,7 @@ sub addTranslation
 	  }
 	  $inCDS=0
 	}
-	
+
 	if (/FT\s+\/gene=\"([^"]+)\"/ ||            # allowing gene names and
 		/FT\s+\/systematic_id=\"([^"]+)\"/ ||   # systematic IDs to contain spaces
 		/FT\s+\/locus_tag=\"(\S+)\"/   ) {
