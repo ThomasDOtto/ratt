@@ -258,9 +258,8 @@ elif [ "$parameterSet" == "Pacbio" ] ;
         else
                 other_nucmer="  "
         fi
-        rearrange=" -1 -o 20 -l 2000 ";
-        minInd=98;
-	other_nucmer="  -diagdiff 10 "
+        rearrange=" -1 -o 20 -l 5000 ";
+        minInd=99;
         ### get real SNP before mutate
         doNucmer
 
@@ -278,38 +277,6 @@ elif [ "$parameterSet" == "Pacbio" ] ;
         ### update name of query
         query=$query."mutated"
 
-elif [ "$parameterSet" == "PacbioG" ] ;
-       then
-        c=800;
-        l=30;
-        g=2000;
-
-        if [ "$parameterSet" == "Pacbio.Repetitive" ] ;
-                then
-                other_nucmer=" --maxmatch "
-        else
-                other_nucmer="  "
-        fi
-        rearrange=" -g -o 20 -l 5000 ";
-        minInd=98;
-        other_nucmer="  -diagdiff 10 "
-
-        ### get real SNP before mutate
-        doNucmer
-
-        perl $RATT_HOME/main.ratt.pl Difference  $name.snp $name.filter.coords $result
-        doneDifference=1;
-
-        ### insert of mutation to have better anchors
-        perl $RATT_HOME/main.ratt.pl Mutate $query
-        return=$?
-        if [ "$return" != "0" ] ;
-                then
-                echo "See Error in BBA.main script, to mutate the query for Assembly to Assembly annotation transfer."
-                exit 1;
-        fi;
-        ### update name of query
-        query=$query."mutated"
 elif [ "$parameterSet" == "Falciparum" ] ||  [ "$parameterSet" == "Falciparum.Repetitive" ] ;
         then
         c=400;
