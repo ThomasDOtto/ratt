@@ -51,8 +51,6 @@ if [ -z "$RATT_HOME" ]; then
 RATT_HOME=/nfs/users/nfs_t/tdo/Bin/ratt; export RATT_HOME
 fi;
 
-### parameter of nucmer
-D=5
 NUCMER_PATH=$PAGIT_HOME/bin/;
 
 ## check that required arguments are passed
@@ -77,14 +75,12 @@ fi
 
 ### nucmer call as function
 function doNucmer {
-sleep 10
         if [ ! -z "$verbose" ]
                 then
                 echo "nucmer  $other_nucmer -g $g -p $name -c $c -l $l $ref $query"
                 echo "delta-filter $rearrange -i $minInd $name.delta > $name.filter.delta"
         fi
-        echo  nucmer $other_nucmer -D $D -g $g -p $name -c $c -l $l $ref $query
-        nucmer $other_nucmer -g $g -p $name -c $c -l $l $ref $query  # &> /dev/null
+        nucmer $other_nucmer -g $g -p $name -c $c -l $l $ref $query   &> /dev/null
         delta-filter $rearrange -i $minInd $name.delta > $name.filter.delta
         show-snps -HTr $name.filter.delta > $name.snp
         show-coords -clHT $name.delta > $name.coords
@@ -413,7 +409,7 @@ perl $RATT_HOME/main.ratt.pl Transfer $refembl $name.snp $name.filter.coords $re
 return=$?
 if [ "$return" != "0" ] ;
         then
-        echo "Sorry, the RATT transfer step did fail.\n"
+        echo "Sorry, the RATT transfer step did fail.\n";
         echo "Debug information: perl $RATT_HOME/main.ratt.pl Transfer $refembl $name.snp $name.filter.coords $result";
         pwd
         exit 1;
@@ -427,7 +423,7 @@ ln -s $orig_query tmpSeqXXX.$tmp
 cd Sequences
 perl $RATT_HOME/main.ratt.pl Split ../tmpSeqXXX.$tmp
 cd ..
-rm tmpSeqXXX.$tmp
+rm -f tmpSeqXXX.$tmp
 
 echo "Nucmer is done. Now Correct the annotation for chromosome $nameRes."
 
@@ -452,4 +448,4 @@ for nameRes in `grep '>' $query | perl -nle 's/\|/_/g;/>(\S+)/; print $1'` ; do
 
 done
 
-rm $result*embl.tmp.BBA.embl # $result.$nameRes.tmp2.embl
+rm -f $result*embl.tmp.BBA.embl # $result.$nameRes.tmp2.embl
