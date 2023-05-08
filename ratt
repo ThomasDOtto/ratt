@@ -222,8 +222,7 @@ if [ "$parameterSet" == "Assembly" ] || [ "$parameterSet" == "Assembly.Repetitiv
         else
                 other_nucmer="  "
         fi
-#       rearrange=" -g -o 0 ";
-        rearrange=" -r -o 5 ";
+        rearrange=" -g -o 0 ";
         minInd=99;
 
         ### get real SNP before mutate
@@ -322,9 +321,8 @@ minInd=90;
         rearrange=" -r -o 1 ";
         if  [ "$parameterSet" == "Strain.global" ] ||  [ "$parameterSet" == "Strain.global.Repetitive" ] ;
                 then
-                rearrange=" -g -o 15 ";
-                minInd=95;
-                D=10
+                rearrange=" -1 -o 5 ";
+                minInd=98;
 fi
 
 
@@ -352,8 +350,7 @@ elif [ "$parameterSet" == "Species" ]  || [ "$parameterSet" == "Species.Repetiti
                 then
                 other_nucmer=" --maxmatch "
         else
-        other_nucmer="  -diagdiff 10 "
-#other_nucmer="  "
+                other_nucmer="  "
         fi
 
         c=400;
